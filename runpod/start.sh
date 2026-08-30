@@ -15,7 +15,6 @@ export ROCKY_VISION_MODEL=${ROCKY_VISION_MODEL:-gemma3:12b}
 export ROCKY_WHISPER=large-v3
 export ROCKY_VISION_KEEPALIVE=30m
 export ROCKY_APPLIO_DIR=/workspace/Applio
-export ROCKY_MODEL_GLB=/workspace/assets/Rocky_realtime.glb
 # set these two to match your voice model files in /workspace/Applio/logs/<name>/
 export ROCKY_RVC_NAME=${ROCKY_RVC_NAME:-rocky_private}
 export ROCKY_RVC_PTH=${ROCKY_RVC_PTH:-rocky_private_200e_9400s.pth}

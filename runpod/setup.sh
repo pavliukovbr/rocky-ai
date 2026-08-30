@@ -33,15 +33,8 @@ deactivate
 
 echo "== voice model =="
 mkdir -p /workspace/Applio/logs
-if [ -d /workspace/assets ]; then
-  RVC_DIR=$(ls -d /workspace/assets/*/ 2>/dev/null | head -1)
-  if [ -n "$RVC_DIR" ]; then
-    cp -r "$RVC_DIR" /workspace/Applio/logs/
-    echo "voice model installed: $RVC_DIR"
-  fi
-else
-  echo "NOTE: upload your assets to /workspace/assets first (voice model folder and the GLB), then rerun this block."
-fi
+cp -r /workspace/rocky-ai/voice/rocky_private /workspace/Applio/logs/
+echo "voice model installed from the repository"
 
 echo
 echo "Setup done. Start everything with: bash /workspace/rocky-ai/runpod/start.sh"

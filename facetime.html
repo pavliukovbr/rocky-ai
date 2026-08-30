@@ -298,13 +298,28 @@
   tick();
 
   /* ---------- conversation ---------- */
-  let busy = false, rockySpeaking = false;
+  let busy = false, rockySpeaking = false, activeVoice = null;
   function playVoiceJob(job, emotion, answerText) {
     setLink('receiving'); gesture('attention'); rockySpeaking = true;
-    const queue = []; let known = 0, playing = false, done = false, spoke = false;
-    const finishAll = () => { rockySpeaking = false; setLink(base()); idle(); };
+    const queue = []; let known = 0, playing = false, done = false, spoke = false, stopped = false, currentAudio = null;
+    const finishAll = () => {
+      if (activeVoice === ctl) activeVoice = null;
+      rockySpeaking = false;
+      if (!stopped) { setLink(base()); idle(); }
+    };
+    const ctl = {
+      stop() {
+        if (stopped) return;
+        stopped = true;
+        if (currentAudio) { try { currentAudio.pause(); } catch {} }
+        queue.length = 0;
+        fetch(`/voice/${job}/cancel`, { method: 'POST' }).catch(() => {});
+        finishAll();
+      }
+    };
+    activeVoice = ctl;
     function pump() {
-      if (playing) return;
+      if (stopped || playing) return;
       if (!queue.length) { if (done) finishAll(); else setLink('receiving'); return; }
       playing = true;
       if (!spoke) {
@@ -317,19 +332,21 @@
       }
       setLink('speaking');
       const a = new Audio(queue.shift());
+      currentAudio = a;
       try { actx.createMediaElementSource(a).connect(analyser); } catch {}
-      const next = () => { playing = false; pump(); };
+      const next = () => { playing = false; currentAudio = null; if (!stopped) pump(); };
       a.addEventListener('ended', next); a.addEventListener('error', next);
       a.play().catch(next);
     }
     async function poll() {
+      if (stopped) return;
       try {
         const r = await fetch(`/voice/${job}/status`); const d = await r.json();
         while (known < d.files.length) queue.push(d.files[known++]);
         if (d.error) { showToast(d.error); finishAll(); return; }
         done = d.done; pump();
         if (!done) setTimeout(poll, 600);
-      } catch { setTimeout(poll, 1500); }
+      } catch { if (!stopped) setTimeout(poll, 1500); }
     }
     poll();
   }
@@ -394,7 +411,7 @@
   /* ---------- live call: mic always open, VAD auto-send, camera PiP ---------- */
   let live = false, micStream = null, camStream = null, vadCtx = null, vadAn = null, vadBuf = null;
   let rec = null, recParts = [], pendingSend = false, vadTimer = null;
-  let vadState = 'idle', speechStart = 0, lastVoice = 0, lastRestart = 0, ambient = 0.004;
+  let vadState = 'idle', speechStart = 0, lastVoice = 0, lastRestart = 0, ambient = 0.004, interruptMs = 0;
 
   function startRec() {
     recParts = [];
@@ -427,11 +444,31 @@
     for (let i = 0; i < vadBuf.length; i++) { const v = (vadBuf[i] - 128) / 128; sum += v * v; }
     const rms = Math.sqrt(sum / vadBuf.length);
     const now = performance.now();
-    if (busy || rockySpeaking) {
-      // do not listen while Rocky is answering or speaking (avoids echo loops)
+    if (busy) {
+      // do not listen while the reply is being generated
       if (vadState === 'speech') { vadState = 'idle'; stopRec(false); }
+      interruptMs = 0;
       return;
     }
+    if (rockySpeaking) {
+      // barge-in: sustained loud speech over Rocky's voice silences him and he listens
+      const overTalk = Math.max(ambient * 5, 0.035);
+      if (rms > overTalk) {
+        interruptMs += 50;
+        if (interruptMs >= 300) {
+          interruptMs = 0;
+          if (activeVoice) activeVoice.stop();
+          stopRec(false);                     // fresh take for the interrupting phrase
+          vadState = 'speech'; speechStart = now; lastVoice = now;
+          setLink('listening'); gesture('attention');
+          devLog(`barge-in: you spoke over Rocky (rms ${rms.toFixed(3)} > ${overTalk.toFixed(3)})`);
+        }
+      } else {
+        interruptMs = Math.max(0, interruptMs - 25);
+      }
+      return;
+    }
+    interruptMs = 0;
     const threshold = Math.max(ambient * 3, 0.012);
     if (vadState === 'idle') {
       ambient = ambient * 0.99 + rms * 0.01;
@@ -494,6 +531,7 @@
   mic.addEventListener('click', () => { live ? endCall() : startCall(); });
   end.addEventListener('click', () => { endCall(); window.location.href = '/'; });
   window.__rockySay = sendMessage;
+  window.__rockyVoice = () => activeVoice;
 </script>
 </body>
 </html>

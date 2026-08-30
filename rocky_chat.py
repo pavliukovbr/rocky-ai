@@ -35,7 +35,7 @@ RVC_PTH = os.environ.get("ROCKY_RVC_PTH", "rocky_private_200e_9400s.pth")
 ROCKY_MODEL = APPLIO_DIR / "logs" / RVC_NAME / RVC_PTH
 ROCKY_INDEX = APPLIO_DIR / "logs" / RVC_NAME / f"{RVC_NAME}.index"
 KOKORO_VOICE = os.environ.get("ROCKY_KOKORO_VOICE", "am_michael")
-MODEL_3D = Path(os.environ.get("ROCKY_MODEL_GLB", str(Path.home() / "Desktop/rocky obj/Rocky_realtime.glb")))
+MODEL_3D = Path(os.environ.get("ROCKY_MODEL_GLB", str(Path(__file__).parent / "model/rocky.glb")))
 
 EMOTION_RE = re.compile(r"\[(calm|happy|excited|thoughtful|concerned|sad|amused)\]", re.IGNORECASE)
 EMOTION_SPEED = {"excited": 1.06, "happy": 1.04, "amused": 1.04, "sad": 0.95, "concerned": 0.97}
@@ -79,6 +79,7 @@ JOBS = {}
 JOBS_LOCK = threading.Lock()
 MAX_JOBS = 8
 VOICE_ROUTE = re.compile(r"^/voice/([0-9a-f]{12})/(status|\d+\.wav)$")
+VOICE_CANCEL_ROUTE = re.compile(r"^/voice/([0-9a-f]{12})/cancel$")
 
 
 def get_kokoro_pipeline():
@@ -504,6 +505,16 @@ class RockyHandler(BaseHTTPRequestHandler):
             return
         if request_path == "/look":
             self.handle_look()
+            return
+        cancel_match = VOICE_CANCEL_ROUTE.match(request_path)
+        if cancel_match:
+            job_id = cancel_match.group(1)
+            with JOBS_LOCK:
+                cancelled = JOBS.pop(job_id, None) is not None
+            shutil.rmtree(JOBS_DIR / job_id, ignore_errors=True)
+            if cancelled:
+                print(f"voice job {job_id} cancelled (barge-in)", flush=True)
+            self.send_json(200, {"cancelled": cancelled})
             return
         if request_path != "/chat":
             self.send_error(404)

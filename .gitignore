@@ -2,6 +2,6 @@
 __pycache__/
 generated/
 memory.json
-model/
 *.wav
 .DS_Store
+._*
