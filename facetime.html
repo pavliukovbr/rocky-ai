@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rocky · Live</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 21,7 21,17 12,22 3,17 3,7' fill='%23e8a94e'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg0:#0b0908; --bg1:#1c140c; --panel:#1e1712; --panel2:#241b13; --line:#3a2e22;
+      --text:#f2e8da; --dim:#b09a7e; --amber:#e8a94e; --amber-deep:#c68632; --earth:#7fb2d6; --live:#7fbf7f;
+      font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; height:100vh; height:100dvh; overflow:hidden; color:var(--text); background:radial-gradient(1100px 600px at 70% -10%, var(--bg1), var(--bg0) 60%); }
+    #stars { position:fixed; inset:0; pointer-events:none; opacity:.5; }
+    #stars::before { content:""; position:absolute; width:2px; height:2px; border-radius:50%; background:#fff;
+      box-shadow: 8vw 12vh 0 0 #fff8, 22vw 32vh 0 0 #fff5, 31vw 8vh 0 1px #ffd9a05f, 47vw 21vh 0 0 #fff7,
+        59vw 6vh 0 0 #fff4, 68vw 28vh 0 1px #fff6, 81vw 14vh 0 0 #ffd9a06f, 90vw 34vh 0 0 #fff5,
+        14vw 78vh 0 0 #fff4, 27vw 88vh 0 0 #fff6, 52vw 82vh 0 1px #ffd9a04f, 74vw 91vh 0 0 #fff5, 88vw 76vh 0 0 #fff4; }
+    #scene { position:fixed; inset:0; width:100%; height:100%; }
+    #hud-top { position:fixed; top:0; left:0; right:0; display:flex; flex-direction:column; align-items:center; gap:4px; padding:16px; pointer-events:none; }
+    #hud-top .who { font-size:1.05rem; letter-spacing:.18em; color:var(--amber); text-shadow:0 0 16px #e8a94e33; }
+    #link-label { font-size:.62rem; letter-spacing:.24em; color:var(--dim); }
+    #link-label.active { color:var(--amber); animation:pulse 1.4s ease-in-out infinite; }
+    #link-label.live-on { color:var(--live); }
+    @keyframes pulse { 50% { opacity:.4; } }
+
+    #pip { position:fixed; right:22px; bottom:100px; width:190px; border-radius:14px; border:1px solid var(--line); transform:scaleX(-1); display:none; z-index:2; box-shadow:0 6px 24px #0009; }
+    #pip.show { display:block; }
+
+    #captions { position:fixed; left:50%; bottom:120px; transform:translateX(-50%); width:min(560px, 88vw); display:flex; flex-direction:column; gap:8px; align-items:center; pointer-events:none; }
+    .cap { max-width:100%; padding:10px 16px; border-radius:14px; font-size:.92rem; line-height:1.45; opacity:0; transition:opacity .3s; }
+    .cap.show { opacity:1; }
+    #cap-user { background:#22324066; border:1px solid #3a546855; color:#cfe0ee; font-size:.8rem; }
+    #cap-rocky { background:#241b13cc; border:1px solid var(--line); border-left:3px solid var(--amber-deep); }
+
+    #bar { position:fixed; left:50%; bottom:26px; transform:translateX(-50%); display:flex; gap:16px; align-items:center; }
+    .round-btn { width:58px; height:58px; border-radius:50%; border:1px solid var(--amber-deep); background:linear-gradient(160deg, #2c2115, var(--panel)); color:var(--amber); cursor:pointer; transition:transform .15s; display:grid; place-items:center; }
+    .round-btn:hover { transform:scale(1.06); }
+    .round-btn:disabled { opacity:.55; cursor:wait; }
+    #mic.live { border-color:var(--live); color:#b9e8b9; box-shadow:0 0 16px #7fbf7f55; animation:pulse 2.2s ease-in-out infinite; }
+    #end { width:46px; height:46px; border-color:#8a3a30; color:#e88a7a; background:linear-gradient(160deg, #33201b, #241412); }
+    #end:hover { border-color:#e86a4e; }
+    #toast { position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--amber-deep); color:var(--text); padding:9px 15px; border-radius:12px; font-size:.83rem; opacity:0; pointer-events:none; transition:opacity .25s; z-index:3; }
+    #toast.show { opacity:1; }
+    #dev { position:fixed; top:70px; right:14px; width:300px; max-height:62vh; overflow-y:auto; background:#100c08ea; border:1px solid var(--line); border-radius:12px; padding:10px 12px; font:11px/1.55 ui-monospace, SFMono-Regular, monospace; color:#bfae94; display:none; z-index:4; white-space:pre-wrap; word-break:break-word; }
+    #dev.show { display:block; }
+    #dev-btn { position:fixed; right:14px; bottom:36px; background:none; border:1px solid var(--line); color:var(--dim); border-radius:8px; padding:4px 9px; font:inherit; font-size:.62rem; letter-spacing:.16em; cursor:pointer; z-index:4; }
+    #dev-btn.on { color:var(--amber); border-color:var(--amber-deep); }
+  </style>
+</head>
+<body>
+<div id="stars"></div>
+<canvas id="scene"></canvas>
+<div id="hud-top">
+  <span class="who">ROCKY · LIVE</span>
+  <span id="link-label">EARTH ⇄ ERID · 16.3 LY</span>
+</div>
+<video id="pip" autoplay playsinline muted></video>
+<div id="captions">
+  <div class="cap" id="cap-user"></div>
+  <div class="cap" id="cap-rocky"></div>
+</div>
+<div id="toast"></div>
+<div id="dev"></div>
+<button type="button" id="dev-btn">DEV</button>
+<div id="bar">
+  <button type="button" id="mic" class="round-btn" aria-label="Start live call">
+    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      <rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/><line x1="12" y1="18" x2="12" y2="21"/>
+    </svg>
+  </button>
+  <button type="button" id="end" class="round-btn" aria-label="End call">
+    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round">
+      <path d="M4 14c4.5-4 11.5-4 16 0" /><line x1="4" y1="14" x2="6.5" y2="17"/><line x1="20" y1="14" x2="17.5" y2="17"/>
+    </svg>
+  </button>
+</div>
+<script type="importmap">{ "imports": { "three": "/vendor/three.module.js" } }</script>
+<script type="module">
+  import * as THREE from 'three';
+  import { GLTFLoader } from '/vendor/GLTFLoader.js';
+  import { RoomEnvironment } from '/vendor/RoomEnvironment.js';
+
+  const storageKey = 'rocky-chat-history-v2';
+  const $ = id => document.getElementById(id);
+  const linkLabel = $('link-label'), capUser = $('cap-user'), capRocky = $('cap-rocky'),
+        mic = $('mic'), end = $('end'), toast = $('toast'), pip = $('pip');
+  let history = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  let toastTimer = null;
+
+  const LABELS = {
+    idle: 'EARTH ⇄ ERID · 16.3 LY', live: 'LIVE · ROCKY IS LISTENING', listening: 'HEARING YOU',
+    encoding: 'ENCODING TRANSMISSION', sending: 'TRANSMITTING TO ERID', receiving: 'RECEIVING FROM ERID', speaking: 'ROCKY SPEAKING',
+  };
+  const base = () => (live ? 'live' : 'idle');
+  let sleepTimer = null, sleeping = false;
+  function armSleep() {
+    clearTimeout(sleepTimer);
+    if (live) return;
+    sleepTimer = setTimeout(() => {
+      sleeping = true; fadeTo('sleep_full', false);
+      setTimeout(() => { if (sleeping) fadeTo('sleep_loop', true); }, 1500);
+    }, 180000);
+  }
+  function wake() { clearTimeout(sleepTimer); if (sleeping) { sleeping = false; idle(); } }
+  function setLink(state) {
+    linkLabel.textContent = LABELS[state];
+    linkLabel.classList.toggle('active', state !== 'idle' && state !== 'live');
+    linkLabel.classList.toggle('live-on', state === 'live');
+    if (state === 'idle') armSleep(); else wake();
+  }
+  function showToast(text) { toast.textContent = text; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 4200); }
+
+  /* developer panel: toggle with the DEV button or the "d" key */
+  const dev = $('dev'), devBtn = $('dev-btn');
+  let devOn = localStorage.getItem('rocky-dev') === 'true';
+  const devLines = [];
+  function renderDev() { dev.classList.toggle('show', devOn); devBtn.classList.toggle('on', devOn); if (devOn) { dev.textContent = devLines.join('\n'); dev.scrollTop = dev.scrollHeight; } }
+  function devLog(line) {
+    devLines.push(`${new Date().toTimeString().slice(0, 8)} ${line}`);
+    while (devLines.length > 40) devLines.shift();
+    if (devOn) renderDev();
+  }
+  function toggleDev() { devOn = !devOn; localStorage.setItem('rocky-dev', devOn); renderDev(); }
+  devBtn.addEventListener('click', toggleDev);
+  addEventListener('keydown', e => { if (e.key === 'd' && !e.metaKey && !e.ctrlKey && !e.altKey) toggleDev(); });
+  renderDev();
+
+  /* ---------- 3D scene ---------- */
+  const canvas = $('scene');
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.15;
+  const scene = new THREE.Scene();
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+  const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 50);
+  camera.position.set(0, 0.46, 1.35);
+  camera.lookAt(0, 0.28, 0);
+  const key = new THREE.DirectionalLight(0xfff1dc, 1.3); key.position.set(1.4, 2.2, 1.6); scene.add(key);
+  const rim = new THREE.DirectionalLight(0x9fc3de, 0.6); rim.position.set(-1.8, 1.2, -1.4); scene.add(rim);
+  const glow = new THREE.PointLight(0xe8a94e, 0, 4); glow.position.set(0, 0.5, 0.7); scene.add(glow);
+
+  /* ---------- Rocky's workshop on Erid ---------- */
+  scene.fog = new THREE.Fog(0x120d09, 2.4, 6.2);
+  const lamps = [];
+  let dust = null;
+  (function buildWorkshop() {
+    const stone = (c, r = 0.95) => new THREE.MeshStandardMaterial({ color: c, roughness: r, metalness: 0, envMapIntensity: 0.25 });
+    const FLOOR_Y = -0.34;
+    const floor = new THREE.Mesh(new THREE.CircleGeometry(5, 48), stone(0x241b14, 1));
+    floor.rotation.x = -Math.PI / 2; floor.position.y = FLOOR_Y; scene.add(floor);
+    // enclosing backdrop so the wall gaps never show void
+    const shell = new THREE.Mesh(new THREE.CylinderGeometry(4.4, 4.4, 5, 36, 1, true),
+      new THREE.MeshStandardMaterial({ color: 0x1c150f, roughness: 1, metalness: 0, envMapIntensity: 0.15, side: THREE.BackSide }));
+    shell.position.y = FLOOR_Y + 2.2; scene.add(shell);
+    // cave wall: arc of rough slabs behind Rocky
+    for (let i = 0; i < 10; i++) {
+      const a = Math.PI + (i / 9 - 0.5) * 2.4;
+      const R = 2.5 + ((i * 37) % 10) / 14;
+      const h = 1.3 + ((i * 53) % 10) / 8;
+      const shade = [0x2a2018, 0x30251b, 0x271e15][i % 3];
+      const slab = new THREE.Mesh(new THREE.BoxGeometry(0.85 + ((i * 29) % 10) / 18, h, 0.4), stone(shade));
+      slab.position.set(Math.sin(a) * R, FLOOR_Y + h / 2 - 0.05, -Math.abs(Math.cos(a)) * R);
+      slab.rotation.y = -a + Math.PI / 2 + (((i * 17) % 10) - 5) * 0.03;
+      scene.add(slab);
+    }
+    // workbench with clutter (left)
+    const bench = new THREE.Group();
+    const top = new THREE.Mesh(new THREE.BoxGeometry(0.95, 0.05, 0.42), stone(0x4a3826, 0.85));
+    top.position.y = 0.36; bench.add(top);
+    for (const sx of [-0.4, 0.4]) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.36, 0.34), stone(0x33271b));
+      leg.position.set(sx, 0.18, 0); bench.add(leg);
+    }
+    const crate = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.14, 0.16), stone(0x54402a, 0.9));
+    crate.position.set(-0.28, 0.455, -0.03); crate.rotation.y = 0.4; bench.add(crate);
+    for (let j = 0; j < 3; j++) {
+      const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.045, 0.11 + j * 0.025, 10), stone(0x51402c, 0.75));
+      jar.position.set(0.08 + j * 0.13, 0.44, 0.08 - j * 0.06); bench.add(jar);
+    }
+    bench.position.set(-1.15, FLOOR_Y, -0.65); bench.rotation.y = 0.5; scene.add(bench);
+    // anvil block (right)
+    const anvil = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.3, 0.26), stone(0x3d2f21, 0.8));
+    anvil.position.set(1.05, FLOOR_Y + 0.15, -0.5); anvil.rotation.y = -0.3; scene.add(anvil);
+    const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.5, 8), stone(0x776043, 0.6));
+    pipe.rotation.z = 1.1; pipe.position.set(1.02, FLOOR_Y + 0.34, -0.42); scene.add(pipe);
+    // hanging lamps with warm flicker
+    for (const [x, y, z] of [[-0.85, 0.55, -0.45], [0.72, 0.62, -0.7], [0.95, 0.5, 0.25]]) {
+      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 2.2, 6), stone(0x241b13, 1));
+      cord.position.set(x, y + 1.1, z); scene.add(cord);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.045, 14, 12),
+        new THREE.MeshStandardMaterial({ color: 0xffc575, emissive: 0xffa845, emissiveIntensity: 2.4, roughness: 0.4 }));
+      bulb.position.set(x, y, z); scene.add(bulb);
+      const light = new THREE.PointLight(0xffb35c, 0.65, 4.2, 1.8);
+      light.position.set(x, y - 0.04, z); scene.add(light);
+      lamps.push(light);
+    }
+    // drifting dust motes
+    const N = 160, pos = new Float32Array(N * 3);
+    for (let i = 0; i < N; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 3.2;
+      pos[i * 3 + 1] = FLOOR_Y + Math.random() * 1.7;
+      pos[i * 3 + 2] = (Math.random() - 0.6) * 2.6;
+    }
+    const dustGeo = new THREE.BufferGeometry();
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xd9b98c, size: 0.008, transparent: true, opacity: 0.45, depthWrite: false }));
+    scene.add(dust);
+  })();
+
+  function resize() { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
+  addEventListener('resize', resize); resize();
+
+  let mixer = null, actions = {}, currentAction = null, model = null;
+  const EMOTION_CLIP = { happy:'yes_jazz_hands', excited:'excited', amused:'yes_jazz_hands', sad:'sad', concerned:'sad', thoughtful:'wait_one_finger', calm:'attention' };
+
+  function fadeTo(name, loop) {
+    const action = actions[name];
+    if (!action) return;
+    if (currentAction === action && loop) return;
+    action.reset();
+    action.setLoop(loop ? THREE.LoopRepeat : THREE.LoopOnce, loop ? Infinity : 1);
+    action.clampWhenFinished = !loop;
+    if (currentAction && currentAction !== action) currentAction.fadeOut(0.25);
+    action.fadeIn(0.25).play();
+    currentAction = action;
+  }
+  const idle = () => fadeTo('idle_loop', true);
+  const gesture = name => { if (actions[name]) fadeTo(name, false); };
+
+  function frameModel() {
+    const box = new THREE.Box3().setFromObject(model);
+    const size = box.getSize(new THREE.Vector3());
+    if (size.y > 0.001) model.scale.multiplyScalar(0.5 / size.y);
+    model.updateWorldMatrix(true, true);
+    const acc = new THREE.Vector3(), probe = new THREE.Vector3();
+    let bones = 0;
+    model.traverse(o => { if (o.isBone) { o.getWorldPosition(probe); acc.add(probe); bones++; } });
+    if (bones) { acc.divideScalar(bones); model.position.sub(acc); }
+    model.userData.baseY = model.position.y;
+    model.userData.bobScale = 0.015;
+    camera.position.set(0, 0.14, 1.35);
+    camera.lookAt(0, 0, 0);
+  }
+  new GLTFLoader().load('/model/rocky.glb?v=8', gltf => {
+    model = new THREE.Group();
+    model.add(gltf.scene);
+    scene.add(model);
+    mixer = new THREE.AnimationMixer(gltf.scene);
+    for (const clip of gltf.animations) actions[clip.name] = mixer.clipAction(clip);
+    mixer.addEventListener('finished', () => { if (!sleeping) idle(); });
+    idle(); armSleep();
+    setTimeout(() => { frameModel(); setTimeout(() => gesture('fist_bump'), 300); }, 600);
+    window.__rocky = { scene, camera, mixer, actions, get model() { return model; } };
+  }, undefined, () => {
+    const crystal = new THREE.Mesh(
+      new THREE.IcosahedronGeometry(0.28, 0),
+      new THREE.MeshStandardMaterial({ color: 0xe8a94e, roughness: 0.35, metalness: 0.1, flatShading: true }));
+    crystal.position.y = 0.3; crystal.userData.baseY = 0.3; crystal.userData.bobScale = 0.02;
+    model = crystal; scene.add(crystal);
+    showToast('Rocky model not found; showing stand-in.');
+  });
+
+  /* playback goes through an analyser so the body reacts to the voice */
+  const actx = new AudioContext();
+  const analyser = actx.createAnalyser(); analyser.fftSize = 256; analyser.connect(actx.destination);
+  const wave = new Uint8Array(analyser.fftSize);
+  let amp = 0;
+  const clock = new THREE.Clock();
+  function tick() {
+    requestAnimationFrame(tick);
+    const delta = clock.getDelta();
+    if (mixer) mixer.update(delta);
+    analyser.getByteTimeDomainData(wave);
+    let sum = 0;
+    for (let i = 0; i < wave.length; i++) { const v = (wave[i] - 128) / 128; sum += v * v; }
+    amp += (Math.sqrt(sum / wave.length) - amp) * 0.25;
+    glow.intensity = amp * 6;
+    const t = clock.elapsedTime;
+    for (let i = 0; i < lamps.length; i++) lamps[i].intensity = 0.6 + 0.07 * Math.sin(t * 11 + i * 2.1) + 0.05 * Math.sin(t * 6.3 + i);
+    if (dust) {
+      const arr = dust.geometry.attributes.position.array;
+      for (let i = 1; i < arr.length; i += 3) { arr[i] += 0.00035; if (arr[i] > 1.4) arr[i] = -0.33; }
+      dust.geometry.attributes.position.needsUpdate = true;
+    }
+    if (model) {
+      model.rotation.y = Math.sin(clock.elapsedTime * 0.25) * 0.06 + amp * 0.08 * Math.sin(clock.elapsedTime * 9);
+      model.position.y = (model.userData.baseY || 0) + amp * (model.userData.bobScale || 0.02) * Math.sin(clock.elapsedTime * 14);
+    }
+    renderer.render(scene, camera);
+  }
+  tick();
+
+  /* ---------- conversation ---------- */
+  let busy = false, rockySpeaking = false;
+  function playVoiceJob(job, emotion, answerText) {
+    setLink('receiving'); gesture('attention'); rockySpeaking = true;
+    const queue = []; let known = 0, playing = false, done = false, spoke = false;
+    const finishAll = () => { rockySpeaking = false; setLink(base()); idle(); };
+    function pump() {
+      if (playing) return;
+      if (!queue.length) { if (done) finishAll(); else setLink('receiving'); return; }
+      playing = true;
+      if (!spoke) {
+        spoke = true;
+        // caption appears together with the voice, not before
+        capRocky.textContent = answerText; capRocky.classList.add('show');
+        gesture(EMOTION_CLIP[emotion] || 'attention');
+      } else if (Math.random() < 0.4) {
+        gesture(EMOTION_CLIP[emotion] || 'attention');
+      }
+      setLink('speaking');
+      const a = new Audio(queue.shift());
+      try { actx.createMediaElementSource(a).connect(analyser); } catch {}
+      const next = () => { playing = false; pump(); };
+      a.addEventListener('ended', next); a.addEventListener('error', next);
+      a.play().catch(next);
+    }
+    async function poll() {
+      try {
+        const r = await fetch(`/voice/${job}/status`); const d = await r.json();
+        while (known < d.files.length) queue.push(d.files[known++]);
+        if (d.error) { showToast(d.error); finishAll(); return; }
+        done = d.done; pump();
+        if (!done) setTimeout(poll, 600);
+      } catch { setTimeout(poll, 1500); }
+    }
+    poll();
+  }
+
+  function grabFrame() {
+    if (!camStream || !pip.videoWidth) return '';
+    const scale = Math.min(1, 960 / pip.videoWidth);
+    const c = document.createElement('canvas');
+    c.width = Math.round(pip.videoWidth * scale); c.height = Math.round(pip.videoHeight * scale);
+    c.getContext('2d').drawImage(pip, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', 0.85);
+  }
+
+  const GREETING_RE = /^(hi|hello|hey|yo|good (morning|evening|night|afternoon)|oi|ol[aá]|bom dia|boa (tarde|noite)|e\s?a[ií])\b/i;
+  async function sendMessage(message) {
+    if (!message) return;
+    busy = true;
+    capUser.textContent = message; capUser.classList.add('show');
+    capRocky.classList.remove('show');
+    setLink('sending');
+    gesture(GREETING_RE.test(message) ? 'fist_bump' : 'wait_one_finger');
+    try {
+      const fastVoice = localStorage.getItem('rocky-fast-voice') !== 'false';
+      const response = await fetch('/chat', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ message, history, speak:true, fast_voice:fastVoice, image: grabFrame() }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      devLog(`chat ${data.chat_secs}s · emotion=${data.emotion}`);
+      if (data.vision) devLog(`gemma ${data.vision.fresh ? '(fresh)' : '(cached)'}: ${data.vision.desc}`);
+      history.push({role:'user',content:message},{role:'assistant',content:data.answer});
+      history = history.slice(-16); localStorage.setItem(storageKey, JSON.stringify(history));
+      if (data.voice_job) { playVoiceJob(data.voice_job, data.emotion || 'calm', data.answer); }
+      else { capRocky.textContent = data.answer; capRocky.classList.add('show'); setLink(base()); idle(); }
+      if (data.voice_error) { capRocky.textContent = data.answer; capRocky.classList.add('show'); devLog(`voice error: ${data.voice_error}`); }
+    } catch (error) { showToast(error.message); setLink(base()); idle(); }
+    finally { busy = false; }
+  }
+
+  /* live eye: while on a call, a frame goes to the vision model every ~25s in the background,
+     so Rocky's view of you is always current and answers never wait for image analysis */
+  let lookBusy = false, lastLookAt = 0;
+  setInterval(async () => {
+    if (!live || !camStream || busy || rockySpeaking || lookBusy) return;
+    if (performance.now() - lastLookAt < 22000) return;
+    const frame = grabFrame();
+    if (!frame) return;
+    lookBusy = true;
+    try {
+      const r = await fetch('/look', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ image: frame }) });
+      const d = await r.json();
+      if (d.desc) { lastLookAt = performance.now(); devLog(`gemma live (${d.secs}s): ${d.desc}`); }
+    } catch {} finally { lookBusy = false; }
+  }, 5000);
+
+  /* small idle fidgets so Rocky never feels frozen */
+  setInterval(() => {
+    if (!busy && !rockySpeaking && !sleeping && live !== undefined && model && Math.random() < 0.35) {
+      gesture(Math.random() < 0.75 ? 'attention' : 'wait_one_finger');
+    }
+  }, 12000);
+
+  /* ---------- live call: mic always open, VAD auto-send, camera PiP ---------- */
+  let live = false, micStream = null, camStream = null, vadCtx = null, vadAn = null, vadBuf = null;
+  let rec = null, recParts = [], pendingSend = false, vadTimer = null;
+  let vadState = 'idle', speechStart = 0, lastVoice = 0, lastRestart = 0, ambient = 0.004;
+
+  function startRec() {
+    recParts = [];
+    rec = new MediaRecorder(micStream);
+    rec.addEventListener('dataavailable', e => { if (e.data.size) recParts.push(e.data); });
+    rec.addEventListener('stop', onRecStopped);
+    rec.start();
+    lastRestart = performance.now();
+  }
+  function stopRec(send) { pendingSend = send; try { rec.stop(); } catch {} }
+  async function onRecStopped() {
+    const blob = new Blob(recParts, { type: rec.mimeType || 'audio/webm' });
+    if (live) startRec();
+    if (!pendingSend || blob.size < 2500) return;
+    setLink('encoding');
+    try {
+      const r = await fetch('/transcribe', { method:'POST', headers:{'Content-Type': blob.type || 'audio/webm'}, body: blob });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      devLog(`heard [${d.lang || '?'} p=${d.prob ?? '?'}] whisper=${d.secs ?? '?'}s audio=${d.dur ?? '?'}s peak=${d.peak ?? '?'}: ${d.text || '(empty)'}`);
+      if (d.quiet) { showToast('Your microphone is very quiet. Raise the input volume in macOS settings.'); setLink(base()); return; }
+      if (!d.text) { setLink(base()); return; }
+      await sendMessage(d.text);
+    } catch (error) { showToast(error.message); setLink(base()); }
+  }
+  function vadTick() {
+    if (!live) return;
+    vadAn.getByteTimeDomainData(vadBuf);
+    let sum = 0;
+    for (let i = 0; i < vadBuf.length; i++) { const v = (vadBuf[i] - 128) / 128; sum += v * v; }
+    const rms = Math.sqrt(sum / vadBuf.length);
+    const now = performance.now();
+    if (busy || rockySpeaking) {
+      // do not listen while Rocky is answering or speaking (avoids echo loops)
+      if (vadState === 'speech') { vadState = 'idle'; stopRec(false); }
+      return;
+    }
+    const threshold = Math.max(ambient * 3, 0.012);
+    if (vadState === 'idle') {
+      ambient = ambient * 0.99 + rms * 0.01;
+      if (rms > threshold) { vadState = 'speech'; speechStart = now; lastVoice = now; setLink('listening'); devLog(`vad: speech start (rms ${rms.toFixed(3)} > th ${threshold.toFixed(3)})`); }
+      else if (now - lastRestart > 12000) stopRec(false);   // drop accumulated silence
+    } else {
+      if (rms > threshold) lastVoice = now;
+      if (now - lastVoice > 900) {
+        vadState = 'idle';
+        const spoke = lastVoice - speechStart > 350;
+        devLog(`vad: speech end (${Math.round(lastVoice - speechStart)}ms${spoke ? '' : ', too short, dropped'})`);
+        stopRec(spoke);
+        if (!spoke) setLink(base());
+      } else if (now - speechStart > 30000) { vadState = 'idle'; stopRec(true); }
+    }
+  }
+  async function pickRealMic() {
+    try {
+      const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+      const virtual = /blackhole|loopback|soundflower|aggregate|virtual/i;
+      const pick = inputs.find(d => /macbook|built-in|internal/i.test(d.label))
+                || inputs.find(d => d.label && !virtual.test(d.label));
+      if (pick) { showToast(`Microphone: ${pick.label}`); return { deviceId: { exact: pick.deviceId } }; }
+    } catch {}
+    return {};
+  }
+  async function startCall() {
+    actx.resume();
+    try {
+      const device = await pickRealMic();
+      micStream = await navigator.mediaDevices.getUserMedia({ audio: { ...device, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    } catch { showToast('Microphone is blocked. Allow it for this page and try again.'); return; }
+    try {
+      camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 } } });
+      pip.srcObject = camStream; pip.classList.add('show');
+    } catch { camStream = null; showToast('Camera unavailable; voice-only call.'); }
+    vadCtx = new AudioContext();
+    vadCtx.createMediaStreamSource(micStream).connect(vadAn = vadCtx.createAnalyser());
+    vadAn.fftSize = 512;
+    vadBuf = new Uint8Array(vadAn.fftSize);
+    live = true;
+    startRec();
+    vadTimer = setInterval(vadTick, 50);
+    mic.classList.add('live'); mic.setAttribute('aria-label', 'End live call');
+    setLink('live');
+  }
+  function endCall() {
+    live = false;
+    clearInterval(vadTimer);
+    try { rec && rec.state !== 'inactive' && rec.stop(); } catch {}
+    pendingSend = false;
+    if (micStream) micStream.getTracks().forEach(t => t.stop());
+    if (camStream) camStream.getTracks().forEach(t => t.stop());
+    micStream = camStream = null;
+    if (vadCtx) vadCtx.close();
+    pip.classList.remove('show'); pip.srcObject = null;
+    mic.classList.remove('live'); mic.setAttribute('aria-label', 'Start live call');
+    setLink('idle');
+  }
+  mic.addEventListener('click', () => { live ? endCall() : startCall(); });
+  end.addEventListener('click', () => { endCall(); window.location.href = '/'; });
+  window.__rockySay = sendMessage;
+</script>
+</body>
+</html>

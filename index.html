@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rocky</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='12,2 21,7 21,17 12,22 3,17 3,7' fill='%23e8a94e'/%3E%3C/svg%3E">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg0:#0b0908; --bg1:#1c140c; --panel:#1e1712; --panel2:#241b13; --line:#3a2e22;
+      --text:#f2e8da; --dim:#b09a7e; --amber:#e8a94e; --amber-deep:#c68632; --earth:#7fb2d6;
+      --user:#223240; --user-line:#3a5468;
+      font-family: ui-rounded, "SF Pro Rounded", system-ui, sans-serif;
+    }
+    * { box-sizing:border-box; }
+    body { margin:0; min-height:100vh; color:var(--text); background:radial-gradient(1100px 600px at 70% -10%, var(--bg1), var(--bg0) 60%); display:grid; place-items:center; }
+    #stars { position:fixed; inset:0; pointer-events:none; opacity:.5; }
+    #stars::before { content:""; position:absolute; width:2px; height:2px; border-radius:50%; background:#fff;
+      box-shadow: 8vw 12vh 0 0 #fff8, 22vw 32vh 0 0 #fff5, 31vw 8vh 0 1px #ffd9a05f, 47vw 21vh 0 0 #fff7,
+        59vw 6vh 0 0 #fff4, 68vw 28vh 0 1px #fff6, 81vw 14vh 0 0 #ffd9a06f, 90vw 34vh 0 0 #fff5,
+        14vw 78vh 0 0 #fff4, 27vw 88vh 0 0 #fff6, 52vw 82vh 0 1px #ffd9a04f, 74vw 91vh 0 0 #fff5, 88vw 76vh 0 0 #fff4; }
+    main { position:relative; width:min(760px, 100%); height:100vh; height:100dvh; display:flex; flex-direction:column; padding:20px 22px 16px; }
+
+    header { display:flex; align-items:center; justify-content:space-between; gap:12px; padding-bottom:10px; }
+    h1 { margin:0; font-size:1.5rem; letter-spacing:.16em; color:var(--amber); text-shadow:0 0 18px #e8a94e33; }
+    .gear { display:inline-flex; align-items:center; gap:7px; background:none; border:1px solid var(--line); color:var(--dim); border-radius:10px; padding:7px 12px; font:inherit; font-size:.78rem; letter-spacing:.08em; cursor:pointer; }
+    .gear:hover { color:var(--text); border-color:var(--amber-deep); }
+
+    /* Earth ⇄ Erid link bar */
+    #link-bar { display:flex; flex-direction:column; gap:7px; padding:10px 2px 14px; border-bottom:1px solid var(--line); }
+    .link-row { display:flex; align-items:center; gap:12px; }
+    .planet { display:flex; align-items:center; gap:7px; font-size:.66rem; letter-spacing:.2em; color:var(--dim); }
+    .planet i { width:9px; height:9px; border-radius:50%; flex:none; }
+    i.earth { background:var(--earth); box-shadow:0 0 8px #7fb2d680; }
+    i.erid { background:var(--amber); box-shadow:0 0 8px #e8a94e80; }
+    .track { position:relative; flex:1; height:14px; overflow:hidden; }
+    .track::before { content:""; position:absolute; left:0; right:0; top:50%; height:1px; background:linear-gradient(90deg, #7fb2d64d, var(--line) 25%, var(--line) 75%, #e8a94e4d); }
+    .packet { position:absolute; top:50%; left:0; width:38px; height:3px; transform:translate(-50%,-50%); border-radius:3px; opacity:0; }
+    #link-bar.sending .packet { background:linear-gradient(90deg, transparent, var(--amber)); box-shadow:8px 0 12px #e8a94e59; animation:to-erid 1.5s ease-in-out infinite; }
+    #link-bar.receiving .packet { background:linear-gradient(270deg, transparent, var(--earth)); box-shadow:-8px 0 12px #7fb2d659; animation:to-earth 1.5s ease-in-out infinite; }
+    #link-bar.listening .packet, #link-bar.encoding .packet { width:70px; background:linear-gradient(90deg, transparent, var(--amber-deep), transparent); animation:scan 1.1s ease-in-out infinite alternate; opacity:1; }
+    #link-bar.speaking i.erid, #link-bar.listening i.earth { animation:node-pulse .85s ease-in-out infinite; }
+    #link-bar.sending i.earth, #link-bar.receiving i.erid { animation:node-pulse 1.5s ease-in-out infinite; }
+    #link-label { font-size:.64rem; letter-spacing:.24em; color:var(--dim); text-align:center; }
+    #link-bar:not(.idle) #link-label { color:var(--amber); }
+    @keyframes to-erid { 0% { left:0%; opacity:0; } 12% { opacity:1; } 88% { opacity:1; } 100% { left:100%; opacity:0; } }
+    @keyframes to-earth { 0% { left:100%; opacity:0; } 12% { opacity:1; } 88% { opacity:1; } 100% { left:0%; opacity:0; } }
+    @keyframes scan { from { left:20%; } to { left:80%; } }
+    @keyframes node-pulse { 50% { box-shadow:0 0 16px 4px #e8a94e66; } }
+    @keyframes pulse { 50% { opacity:.35; } }
+
+    #settings { display:none; flex-wrap:wrap; gap:10px 14px; align-items:center; padding:12px 4px; border-bottom:1px solid var(--line); font-size:.85rem; color:var(--dim); }
+    #settings.open { display:flex; }
+    label { display:flex; align-items:center; gap:5px; cursor:pointer; }
+    input[type=checkbox] { accent-color: var(--amber); }
+    .clear-btn { background:var(--panel); color:var(--dim); border:1px solid var(--line); border-radius:9px; padding:7px 11px; font:inherit; font-size:.82rem; cursor:pointer; }
+    .clear-btn:hover { color:var(--text); border-color:var(--amber-deep); }
+
+    #chat { flex:1; overflow-y:auto; padding:20px 2px; display:flex; flex-direction:column; gap:16px; scrollbar-width:thin; scrollbar-color:var(--line) transparent; }
+    .row { display:flex; gap:10px; max-width:86%; }
+    .row.user { align-self:flex-end; flex-direction:row-reverse; }
+    .avatar { flex:none; width:34px; height:34px; border-radius:12px; background:var(--panel2); border:1px solid var(--line); display:grid; place-items:center; }
+    .bubble { padding:12px 15px; border-radius:16px; line-height:1.5; white-space:pre-wrap; font-size:.95rem; }
+    .row:not(.user) .bubble { background:var(--panel2); border:1px solid var(--line); border-left:3px solid var(--amber-deep); border-bottom-left-radius:5px; }
+    .row.user .bubble { background:var(--user); border:1px solid var(--user-line); border-bottom-right-radius:5px; }
+    .bubble img.sent { display:block; max-width:190px; border-radius:10px; margin:0 0 8px; border:1px solid var(--user-line); }
+    .signal { color:var(--amber); animation:pulse 1.4s ease-in-out infinite; }
+    small.note { display:block; margin-top:7px; color:var(--dim); font-size:.76rem; }
+    small.note.signal { color:var(--amber); }
+    .replay { display:inline-flex; align-items:center; gap:6px; background:none; color:var(--amber); border:1px solid var(--amber-deep); border-radius:9px; padding:4px 11px; font:inherit; font-size:.74rem; margin-top:8px; cursor:pointer; }
+    .replay:hover { background:#e8a94e1a; }
+
+    #toast { position:absolute; bottom:96px; left:50%; transform:translateX(-50%); background:var(--panel2); border:1px solid var(--amber-deep); color:var(--text); padding:9px 15px; border-radius:12px; font-size:.83rem; opacity:0; pointer-events:none; transition:opacity .25s; max-width:85%; z-index:2; }
+    #toast.show { opacity:1; }
+
+    #cam-bar { display:none; align-items:center; gap:12px; padding:10px 0 2px; }
+    #cam-bar.open { display:flex; }
+    #cam-bar video { width:210px; max-width:45%; border-radius:12px; border:1px solid var(--amber-deep); }
+    .cam-act { background:var(--panel); color:var(--amber); border:1px solid var(--amber-deep); border-radius:10px; padding:8px 14px; font:inherit; font-size:.8rem; cursor:pointer; }
+    .cam-act:hover { background:#e8a94e1a; }
+    .cam-act.quiet { color:var(--dim); border-color:var(--line); }
+
+    #attach { display:none; align-items:center; gap:10px; padding:8px 0 0; }
+    #attach.show { display:flex; }
+    #attach img { height:46px; border-radius:8px; border:1px solid var(--amber-deep); }
+    #attach span { font-size:.74rem; letter-spacing:.12em; color:var(--dim); }
+    #attach-x { background:none; border:1px solid var(--line); color:var(--dim); border-radius:8px; width:26px; height:26px; display:grid; place-items:center; cursor:pointer; }
+    #attach-x:hover { color:var(--text); border-color:var(--amber-deep); }
+
+    form { display:flex; gap:10px; align-items:flex-end; padding-top:14px; border-top:1px solid var(--line); }
+    .round-btn { flex:none; width:54px; height:54px; border-radius:50%; border:1px solid var(--amber-deep); background:linear-gradient(160deg, #2c2115, var(--panel)); color:var(--amber); cursor:pointer; transition:transform .15s; display:grid; place-items:center; }
+    .round-btn:hover { transform:scale(1.06); }
+    .round-btn:disabled { opacity:.55; cursor:wait; }
+    #mic .icon-stop { display:none; }
+    #mic.recording { background:radial-gradient(circle, #7a2b20, #4a1a12); border-color:#e86a4e; color:#ffb4a0; animation:pulse 1.1s ease-in-out infinite; }
+    #mic.recording .icon-mic { display:none; }
+    #mic.recording .icon-stop { display:block; }
+    textarea { flex:1; resize:none; border:1px solid var(--line); border-radius:14px; background:var(--panel); color:var(--text); padding:14px; font:inherit; font-size:.93rem; min-height:54px; max-height:130px; }
+    textarea:focus { outline:none; border-color:var(--amber-deep); }
+    #send { border:0; border-radius:14px; padding:0 20px; height:54px; background:linear-gradient(160deg, var(--amber), var(--amber-deep)); color:#231506; font-weight:700; font-size:.95rem; cursor:pointer; }
+    #send:disabled { opacity:.5; cursor:wait; }
+  </style>
+</head>
+<body>
+<div id="stars"></div>
+<main>
+  <header>
+    <h1>ROCKY</h1>
+    <div style="display:flex; gap:8px;">
+    <a class="gear" href="/facetime" style="text-decoration:none;">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="12" height="12" rx="2.5"/><path d="M15 12l6-3.5v7z"/></svg>
+      CALL
+    </a>
+    <button type="button" class="gear" id="settings-btn" aria-label="Settings">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <line x1="4" y1="6.5" x2="20" y2="6.5"/><circle cx="9.5" cy="6.5" r="2.4" fill="var(--bg0)"/>
+        <line x1="4" y1="12" x2="20" y2="12"/><circle cx="15" cy="12" r="2.4" fill="var(--bg0)"/>
+        <line x1="4" y1="17.5" x2="20" y2="17.5"/><circle cx="7.5" cy="17.5" r="2.4" fill="var(--bg0)"/>
+      </svg>
+      SETTINGS
+    </button>
+    </div>
+  </header>
+  <div id="link-bar" class="idle">
+    <div class="link-row">
+      <span class="planet"><i class="earth"></i>EARTH</span>
+      <div class="track"><span class="packet"></span></div>
+      <span class="planet">ERID<i class="erid"></i></span>
+    </div>
+    <span id="link-label">LINK IDLE · 16.3 LY · LOCAL RELAY</span>
+  </div>
+  <section id="settings">
+    <label><input id="speak" type="checkbox" checked> Rocky speaks</label>
+    <label><input id="fast" type="checkbox"> Fast voice</label>
+    <button type="button" id="clear" class="clear-btn">Clear chat</button>
+  </section>
+  <section id="chat" aria-live="polite"></section>
+  <div id="toast"></div>
+  <div id="cam-bar">
+    <video id="cam-video" autoplay playsinline muted></video>
+    <button type="button" class="cam-act" id="cam-shot">Capture</button>
+    <button type="button" class="cam-act quiet" id="cam-cancel">Cancel</button>
+  </div>
+  <div id="attach">
+    <img id="attach-img" alt="Captured frame">
+    <span>FRAME READY FOR TRANSMISSION</span>
+    <button type="button" id="attach-x" aria-label="Discard frame">
+      <svg viewBox="0 0 24 24" width="11" height="11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+  </div>
+  <form id="form">
+    <button type="button" id="mic" class="round-btn" aria-label="Talk to Rocky">
+      <svg class="icon-mic" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <rect x="9" y="3" width="6" height="11" rx="3"/>
+        <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0"/>
+        <line x1="12" y1="18" x2="12" y2="21"/>
+      </svg>
+      <svg class="icon-stop" viewBox="0 0 24 24" width="20" height="20">
+        <rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/>
+      </svg>
+    </button>
+    <button type="button" id="cam" class="round-btn" aria-label="Show Rocky through the camera">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round">
+        <path d="M4 8h3.2L9.4 5.5h5.2L16.8 8H20v11H4z"/>
+        <circle cx="12" cy="13.2" r="3.1"/>
+      </svg>
+    </button>
+    <textarea id="message" rows="1" placeholder="or type to Rocky…"></textarea>
+    <button id="send">Send</button>
+  </form>
+</main>
+<script>
+  const storageKey = 'rocky-chat-history-v2';
+  const greeting = 'You awake. Good. Rocky was fixing small pump. Pump is bad. Rocky fix. What do we work on?';
+  const AVATAR = '<svg viewBox="0 0 24 24" width="19" height="19"><polygon points="12,2 21,7 21,17 12,22 3,17 3,7" fill="none" stroke="var(--amber-deep)" stroke-width="1.6"/><polygon points="12,7 16.5,9.5 16.5,14.5 12,17 7.5,14.5 7.5,9.5" fill="var(--amber)" opacity=".5"/></svg>';
+  const PLAY_ICON = '<svg viewBox="0 0 24 24" width="10" height="10"><polygon points="6,4 20,12 6,20" fill="currentColor"/></svg>';
+  const $ = id => document.getElementById(id);
+  const chat = $('chat'), form = $('form'), input = $('message'), send = $('send'), speak = $('speak'), fast = $('fast'),
+        linkBar = $('link-bar'), linkLabel = $('link-label'), clearBtn = $('clear'), settings = $('settings'),
+        settingsBtn = $('settings-btn'), mic = $('mic'), toast = $('toast'),
+        cam = $('cam'), camBar = $('cam-bar'), camVideo = $('cam-video'), camShot = $('cam-shot'),
+        camCancel = $('cam-cancel'), attach = $('attach'), attachImg = $('attach-img'), attachX = $('attach-x');
+  let history = JSON.parse(localStorage.getItem(storageKey) || '[]');
+  let ops = 0, toastTimer = null;
+
+  const LINK_LABELS = {
+    idle: 'LINK IDLE · 16.3 LY · LOCAL RELAY',
+    listening: 'RECORDING YOUR VOICE',
+    encoding: 'ENCODING TRANSMISSION',
+    sending: 'TRANSMITTING TO ERID',
+    receiving: 'RECEIVING FROM ERID',
+    speaking: 'ROCKY SPEAKING',
+  };
+  function setLink(state) { linkBar.className = state; linkLabel.textContent = LINK_LABELS[state]; }
+  function opDone() { ops = Math.max(0, ops - 1); if (!ops) setLink('idle'); }
+
+  function add(role, content) {
+    const row = document.createElement('div'); row.className = role === 'assistant' ? 'row' : 'row user';
+    if (role === 'assistant') { const av = document.createElement('div'); av.className = 'avatar'; av.innerHTML = AVATAR; row.append(av); }
+    const el = document.createElement('div'); el.className = 'bubble'; el.textContent = content;
+    row.append(el); chat.append(row); chat.scrollTop = chat.scrollHeight; return el;
+  }
+  function showToast(text) {
+    toast.textContent = text; toast.classList.add('show');
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 4200);
+  }
+
+  settingsBtn.addEventListener('click', () => settings.classList.toggle('open'));
+  speak.checked = localStorage.getItem('rocky-speaks') !== 'false';
+  speak.addEventListener('change', () => localStorage.setItem('rocky-speaks', speak.checked));
+  fast.checked = localStorage.getItem('rocky-fast-voice') !== 'false';
+  fast.addEventListener('change', () => localStorage.setItem('rocky-fast-voice', fast.checked));
+  clearBtn.addEventListener('click', () => {
+    if (!confirm('Clear this conversation? Rocky will forget it.')) return;
+    history = []; localStorage.setItem(storageKey, '[]'); chat.replaceChildren(); add('assistant', greeting);
+  });
+  if (!history.length) { add('assistant', greeting); } else history.forEach(item => add(item.role, item.content));
+  setLink('idle');
+
+  function playSequence(files, onDone) {
+    let i = 0;
+    function next() { if (i >= files.length) { if (onDone) onDone(); return; } const a = new Audio(files[i++]); a.addEventListener('ended', next); a.addEventListener('error', next); a.play().catch(next); }
+    next();
+  }
+  function playVoiceJob(job, bubble) {
+    const note = document.createElement('small'); note.className = 'note signal'; note.textContent = 'Voice crossing from Erid…';
+    bubble.append(note); ops++; setLink('receiving');
+    const queue = []; const all = []; let known = 0, playing = false, done = false, finished = false;
+    function pump() {
+      if (playing) return;
+      if (!queue.length) { if (!done) setLink('receiving'); finish(); return; }
+      playing = true; const a = new Audio(queue.shift());
+      const next = () => { playing = false; pump(); };
+      a.addEventListener('ended', next); a.addEventListener('error', next);
+      note.textContent = 'Rocky speaking…'; setLink('speaking');
+      a.play().catch(next);
+    }
+    function finish() {
+      if (finished || !done || playing || queue.length) return;
+      finished = true; opDone();
+      const btn = document.createElement('button'); btn.type = 'button'; btn.className = 'replay'; btn.innerHTML = `${PLAY_ICON}<span>Hear again</span>`;
+      btn.addEventListener('click', () => playSequence(all));
+      note.replaceWith(btn);
+    }
+    async function poll() {
+      try {
+        const r = await fetch(`/voice/${job}/status`); const d = await r.json();
+        while (known < d.files.length) { queue.push(d.files[known]); all.push(d.files[known]); known++; }
+        if (d.error) { note.classList.remove('signal'); note.textContent = d.error; opDone(); return; }
+        done = d.done; pump();
+        if (!done) setTimeout(poll, 600); else finish();
+      } catch { setTimeout(poll, 1500); }
+    }
+    poll();
+  }
+
+  async function sendMessage(message) {
+    const image = pendingImage;
+    if (!message && !image) return;
+    pendingImage = null; attach.classList.remove('show');
+    const shown = message || 'Showing Rocky through the camera…';
+    const bubble = add('user', shown);
+    if (image) { const im = document.createElement('img'); im.className = 'sent'; im.src = image; bubble.prepend(im); chat.scrollTop = chat.scrollHeight; }
+    send.disabled = true; ops++; setLink('sending');
+    const waiting = add('assistant', 'Signal crossing to Erid…');
+    waiting.classList.add('signal');
+    try {
+      const response = await fetch('/chat', { method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ message, history, speak:speak.checked, fast_voice:fast.checked, image: image || '' }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      waiting.classList.remove('signal'); waiting.textContent = data.answer;
+      const stored = image ? `(through the camera) ${shown}` : message;
+      history.push({role:'user',content:stored},{role:'assistant',content:data.answer});
+      history = history.slice(-16); localStorage.setItem(storageKey, JSON.stringify(history));
+      if (data.voice_job) playVoiceJob(data.voice_job, waiting);
+      if (data.voice_error) { const note = document.createElement('small'); note.className = 'note'; note.textContent = data.voice_error; waiting.append(note); }
+    } catch (error) { waiting.classList.remove('signal'); waiting.textContent = error.message; }
+    finally { send.disabled = false; opDone(); input.focus(); }
+  }
+  form.addEventListener('submit', event => { event.preventDefault(); const message = input.value.trim(); input.value = ''; sendMessage(message); });
+  input.addEventListener('keydown', event => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); form.requestSubmit(); } });
+
+  let recorder = null, recChunks = [], recStream = null, recTimer = null;
+  async function pickRealMic() {
+    try {
+      const inputs = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === 'audioinput');
+      const virtual = /blackhole|loopback|soundflower|aggregate|virtual/i;
+      const pick = inputs.find(d => /macbook|built-in|internal/i.test(d.label))
+                || inputs.find(d => d.label && !virtual.test(d.label));
+      if (pick) return { deviceId: { exact: pick.deviceId } };
+    } catch {}
+    return {};
+  }
+  mic.addEventListener('click', async () => {
+    if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+    try {
+      const device = await pickRealMic();
+      recStream = await navigator.mediaDevices.getUserMedia({ audio: { ...device, echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+    }
+    catch { showToast('Microphone is blocked. Allow it for this page and try again.'); return; }
+    recChunks = [];
+    recorder = new MediaRecorder(recStream);
+    recorder.addEventListener('dataavailable', e => { if (e.data.size) recChunks.push(e.data); });
+    recorder.addEventListener('stop', onRecorded);
+    recorder.start();
+    ops++; setLink('listening');
+    mic.classList.add('recording'); mic.setAttribute('aria-label', 'Stop and send');
+    recTimer = setTimeout(() => { if (recorder && recorder.state === 'recording') recorder.stop(); }, 60000);
+  });
+  async function onRecorded() {
+    clearTimeout(recTimer);
+    mic.classList.remove('recording'); mic.setAttribute('aria-label', 'Talk to Rocky');
+    recStream.getTracks().forEach(track => track.stop());
+    const blob = new Blob(recChunks, { type: recorder.mimeType || 'audio/webm' });
+    if (blob.size < 1200) { showToast('Rocky heard nothing. Keep the talk button on a bit longer.'); opDone(); return; }
+    mic.disabled = true; setLink('encoding');
+    try {
+      const r = await fetch('/transcribe', { method:'POST', headers:{'Content-Type': blob.type || 'audio/webm'}, body: blob });
+      const d = await r.json();
+      if (!r.ok) throw new Error(d.error);
+      if (!d.text) { showToast('Rocky heard only static. Try again, closer to the microphone.'); return; }
+      sendMessage(d.text);
+    } catch (error) { showToast(error.message); }
+    finally { mic.disabled = false; opDone(); }
+  }
+
+  let camStream = null, pendingImage = null;
+  cam.addEventListener('click', async () => {
+    if (camBar.classList.contains('open')) { closeCam(); return; }
+    try { camStream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 } } }); }
+    catch { showToast('Camera is blocked. Allow it for this page and try again.'); return; }
+    camVideo.srcObject = camStream; camBar.classList.add('open');
+  });
+  function closeCam() {
+    if (camStream) camStream.getTracks().forEach(track => track.stop());
+    camStream = null; camVideo.srcObject = null; camBar.classList.remove('open');
+  }
+  camCancel.addEventListener('click', closeCam);
+  camShot.addEventListener('click', () => {
+    if (!camStream) return;
+    const width = camVideo.videoWidth || 1280, height = camVideo.videoHeight || 720;
+    const scale = Math.min(1, 960 / width);
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(width * scale); canvas.height = Math.round(height * scale);
+    canvas.getContext('2d').drawImage(camVideo, 0, 0, canvas.width, canvas.height);
+    pendingImage = canvas.toDataURL('image/jpeg', 0.85);
+    attachImg.src = pendingImage; attach.classList.add('show');
+    closeCam(); input.focus();
+  });
+  attachX.addEventListener('click', () => { pendingImage = null; attach.classList.remove('show'); });
+</script>
+</body>
+</html>
