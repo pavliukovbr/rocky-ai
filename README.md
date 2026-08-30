@@ -62,13 +62,13 @@ Open `http://127.0.0.1:7860` for the chat and `http://127.0.0.1:7860/facetime` f
 
 Measured on real hardware, warm models, short replies:
 
-| Tier | Machine | Text reply | First spoken words | Vision refresh |
+| Tier | Machine | Brains | Text reply | Full spoken reply |
 | --- | --- | --- | --- | --- |
-| Minimum | Apple M1 or M2, 8 GB | about 1 s | 8 to 12 s | 10 to 20 s per frame |
-| Recommended | RTX 2070 Super class, 8 GB VRAM | under 1 s | 2 to 3 s | 2 to 3 s per frame |
-| Good | RTX 3080 or better, or M3 Pro 18 GB | under 1 s | about 1 s | about 1 s per frame |
+| Minimum | Apple M2, 8 GB (measured) | qwen2.5:3b, gemma3:4b, whisper small | about 1 s | 8 to 12 s |
+| Recommended | RTX PRO 4500, 32 GB VRAM (measured) | qwen2.5:14b, gemma3:12b, whisper large v3 | 0.5 s | 1.2 s |
+| Entry GPU | RTX 2070 Super class, 8 GB VRAM (estimated) | small brains from the minimum tier | under 1 s | 2 to 3 s |
 
-On the minimum tier the models take turns in memory, so the first answer after a camera look can be a few seconds slower. From the recommended tier up everything stays loaded and the conversation flows.
+The recommended row comes from a real cloud run on a RunPod RTX PRO 4500: half a second to think with a 14B model, 1.2 seconds for the complete voice, and the camera loop refreshing every few seconds. The scripts in `runpod/` reproduce that machine exactly. On the minimum tier the models take turns in memory, so the first answer after a camera look can be a few seconds slower. With 24 GB of VRAM or more everything stays loaded and the conversation truly flows.
 
 You also need around 10 GB of disk for the models.
 
