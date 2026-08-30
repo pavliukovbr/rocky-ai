@@ -10,8 +10,8 @@ pgrep -f "app.py --port 6969" > /dev/null || (python app.py --port 6969 --server
 deactivate
 
 export ROCKY_HOST=0.0.0.0
-export ROCKY_CHAT_MODEL=qwen2.5:14b
-export ROCKY_VISION_MODEL=gemma3:12b
+export ROCKY_CHAT_MODEL=${ROCKY_CHAT_MODEL:-qwen2.5:14b}
+export ROCKY_VISION_MODEL=${ROCKY_VISION_MODEL:-gemma3:12b}
 export ROCKY_WHISPER=large-v3
 export ROCKY_VISION_KEEPALIVE=30m
 export ROCKY_APPLIO_DIR=/workspace/Applio

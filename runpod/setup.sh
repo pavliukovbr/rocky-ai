@@ -10,8 +10,8 @@ echo "== ollama =="
 curl -fsSL https://ollama.com/install.sh | sh
 (OLLAMA_HOST=127.0.0.1 ollama serve > /workspace/ollama.log 2>&1 &)
 sleep 6
-ollama pull qwen2.5:14b
-ollama pull gemma3:12b
+ollama pull "${ROCKY_CHAT_MODEL:-qwen2.5:14b}"
+ollama pull "${ROCKY_VISION_MODEL:-gemma3:12b}"
 
 echo "== rocky server deps =="
 cd /workspace/rocky-ai
