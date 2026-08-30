@@ -13,14 +13,44 @@ A private companion inspired by Rocky from Project Hail Mary. You talk, he liste
 
 The AI models themselves are not in the repository. Ollama and faster-whisper download them on first use.
 
-## What he does
+## Features
 
-* Real voice conversation. On a call the microphone stays open, he detects when you start and stop talking and answers by himself. Speak over him and he goes quiet and listens, like a real call.
-* His own voice. Kokoro speaks, then the RVC model makes it sound like Rocky.
-* He sees you. The camera feeds a local vision model in the background, so he always knows what is in front of him.
-* He feels. Every reply carries an emotion that drives his gestures: jazz hands when happy, a closed fist for no, a drooped carapace when sad, a fist bump when you greet him.
-* He remembers. Facts about you are stored in a local file and fed back into every future conversation.
-* He sleeps. Leave him alone for a few minutes and he curls up on the workshop floor.
+### Talking with him
+
+* Live call mode: press the microphone once and just talk. Voice activity detection notices when you start and stop speaking and sends each phrase by itself, no buttons.
+* Barge in: speak over Rocky and he goes quiet, cancels the rest of his own speech and listens, like interrupting a real person.
+* His own voice: Kokoro speaks, then the trained RVC model makes it sound like Rocky. Short replies come as one continuous audio, long ones stream sentence by sentence so he starts talking sooner.
+* Captions appear in the exact moment the voice starts, never before.
+* Emotions change how he speaks: excited is a little faster, sad a little slower.
+* The classic chat page still exists, with push to talk, typing, a camera button, reply audio replay and a clear chat button.
+* Hearing that defends itself: hallucinated transcriptions are filtered out, a muted or too quiet microphone triggers a warning instead of invented text, and virtual audio devices like BlackHole are skipped automatically when picking the microphone.
+
+### Seeing you
+
+* A live eye: during a call the camera feeds the vision model in the background every few seconds, so his idea of what is in front of him is always current and answers never wait for image analysis.
+* Say something visual ("look at this") and he takes a fresh look on the spot.
+* Your own video shows as a small mirror in the corner, like a real video call.
+
+### His body
+
+* Rigged 3D body with 12 animation clips, framed inside his stone workshop with flickering lamps, a workbench, drifting dust and fog.
+* Gestures follow the emotion of each reply: jazz hands when happy, a closed fist for no, one finger up for wait, a drooped carapace when sad, full excitement wiggle, and a fist bump when you greet him.
+* He is never frozen: idle fidgets, he glances around, and his body reacts to the sound of his own voice.
+* Leave him alone for a few minutes and he falls asleep on the workshop floor, then wakes when you speak.
+* The waiting states are themed as a light link between Earth and Erid, 16.3 light years apart, with a packet of light traveling the header bar in each direction.
+
+### His mind
+
+* Post story persona: the mission succeeded, he lives on Erid, has a workshop, opinions and boundaries. He never pretends to see without camera data and never breaks character.
+* Every reply carries a hidden emotion tag that drives the body and the voice.
+* Long term memory: after each exchange, stable facts about you are extracted and saved to a local file, and fed back into every future conversation. He learns your name, your projects, and what you have shown him through the camera. Delete a line in `memory.json` and he forgets it.
+* Conversation history is shared between the chat page and the call page.
+
+### For tinkerers
+
+* Everything is local. No accounts, no API keys, no telemetry.
+* Developer panel on the call page (press D): what the vision model sees, what Whisper understood with confidence and audio levels, model timings, emotion picked, and every voice activity event.
+* All models are swappable through environment variables, and the `runpod/` scripts rebuild the entire thing on a rented GPU in about fifteen minutes.
 
 ## Install
 
