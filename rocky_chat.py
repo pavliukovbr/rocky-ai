@@ -21,12 +21,14 @@ import soundfile as sf
 import torch
 from kokoro import KPipeline
 
-HOST = "127.0.0.1"
-PORT = 7860
+HOST = os.environ.get("ROCKY_HOST", "127.0.0.1")
+PORT = int(os.environ.get("ROCKY_PORT", "7860"))
 OLLAMA_CHAT_URL = "http://127.0.0.1:11434/api/chat"
 APPLIO_API_URL = "http://127.0.0.1:6969"
-MODEL = "qwen2.5:3b"
-VISION_MODEL = "gemma3:4b"
+MODEL = os.environ.get("ROCKY_CHAT_MODEL", "qwen2.5:3b")
+VISION_MODEL = os.environ.get("ROCKY_VISION_MODEL", "gemma3:4b")
+WHISPER_SIZE = os.environ.get("ROCKY_WHISPER", "small")
+VISION_KEEPALIVE = os.environ.get("ROCKY_VISION_KEEPALIVE", "0")
 APPLIO_DIR = Path(os.environ.get("ROCKY_APPLIO_DIR", str(Path.home() / "Desktop/Applio")))
 RVC_NAME = os.environ.get("ROCKY_RVC_NAME", "rocky_private")
 RVC_PTH = os.environ.get("ROCKY_RVC_PTH", "rocky_private_200e_9400s.pth")
@@ -84,7 +86,7 @@ def get_kokoro_pipeline():
     global KOKORO_PIPELINE
     with KOKORO_LOCK:
         if KOKORO_PIPELINE is None:
-            device = "mps" if torch.backends.mps.is_available() else "cpu"
+            device = "cuda" if torch.cuda.is_available() else ("mps" if torch.backends.mps.is_available() else "cpu")
             KOKORO_PIPELINE = KPipeline(lang_code="a", device=device)
     return KOKORO_PIPELINE
 
@@ -95,7 +97,10 @@ def get_whisper():
     with WHISPER_LOCK:
         if WHISPER_MODEL is None:
             from faster_whisper import WhisperModel
-            WHISPER_MODEL = WhisperModel("small", device="cpu", compute_type="int8")
+            if torch.cuda.is_available():
+                WHISPER_MODEL = WhisperModel(WHISPER_SIZE, device="cuda", compute_type="float16")
+            else:
+                WHISPER_MODEL = WhisperModel(WHISPER_SIZE, device="cpu", compute_type="int8")
     return WHISPER_MODEL
 
 
@@ -138,7 +143,7 @@ def describe_image(image_b64):
     raw = ollama_chat(
         [{"role": "user", "content": "In 2 short factual sentences: what is in front of the camera right now? Focus on the person, what they are doing or holding, and anything notable."}],
         num_predict=110,
-        keep_alive="0",
+        keep_alive=VISION_KEEPALIVE,
         model=VISION_MODEL,
         images=[image_b64],
     ).strip()
