@@ -4,7 +4,7 @@
 set -e
 
 echo "== system packages =="
-apt-get update -qq && apt-get install -y -qq ffmpeg espeak-ng git curl > /dev/null
+apt-get update -qq && apt-get install -y -qq ffmpeg espeak-ng libportaudio2 git curl > /dev/null
 
 echo "== ollama =="
 curl -fsSL https://ollama.com/install.sh | sh
@@ -28,6 +28,7 @@ cd /workspace/Applio
 python -m venv --system-site-packages .venv
 . .venv/bin/activate
 pip install -q -r requirements.txt
+pip install -q "transformers==4.44.2"
 deactivate
 
 echo "== voice model =="
